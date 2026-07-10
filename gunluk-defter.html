@@ -1,0 +1,837 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Günlük Defter</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,600;0,700;0,900;1,600&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#1c1b19;
+    --ink-2:#252220;
+    --paper:#f4ead9;
+    --paper-2:#ebe0c9;
+    --paper-line: rgba(40,32,20,.14);
+    --brass:#b8863b;
+    --brass-deep:#8f6428;
+    --moss:#5c6e50;
+    --moss-deep:#465340;
+    --plum:#7a4f6e;
+    --plum-deep:#5c3a53;
+    --ink-text:#2a2420;
+    --chalk:#f6f1e6;
+    --danger:#a3432f;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background: var(--ink);
+    background-image:
+      radial-gradient(ellipse at 20% -10%, rgba(184,134,59,.10), transparent 55%),
+      radial-gradient(ellipse at 90% 110%, rgba(122,79,110,.12), transparent 55%);
+    color:var(--ink-text);
+    font-family:'Inter',sans-serif;
+    min-height:100vh;
+    display:flex;
+    align-items:flex-start;
+    justify-content:center;
+    padding: 36px 20px 60px;
+  }
+  .desk{ width:100%; max-width:1180px; }
+  .desk-header{
+    color:var(--chalk);
+    display:flex;
+    align-items:baseline;
+    justify-content:space-between;
+    gap:16px;
+    padding: 4px 8px 22px;
+    flex-wrap:wrap;
+  }
+  .desk-header h1{
+    font-family:'Fraunces',serif;
+    font-weight:900;
+    font-style:italic;
+    font-size:clamp(26px,3.6vw,38px);
+    margin:0;
+    letter-spacing:.2px;
+  }
+  .desk-header p{
+    margin:6px 0 0;
+    font-size:13px;
+    color:rgba(246,241,230,.55);
+    font-family:'JetBrains Mono',monospace;
+  }
+
+  .notebook-wrap{
+    position:relative;
+    display:flex;
+  }
+
+  .tabs-rail{
+    display:flex;
+    flex-direction:column;
+    gap:14px;
+    padding-top:56px;
+    margin-right:-1px;
+    z-index:5;
+  }
+  .tab-btn{
+    all:unset;
+    cursor:pointer;
+    width:52px;
+    min-height:132px;
+    border-radius: 10px 0 0 10px;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    gap:10px;
+    padding:14px 0;
+    color:var(--chalk);
+    font-family:'Fraunces',serif;
+    font-weight:700;
+    transform: translateX(0) scale(.97);
+    box-shadow: -3px 4px 10px rgba(0,0,0,.28);
+    transition: transform .28s cubic-bezier(.2,.8,.3,1), box-shadow .28s ease, filter .28s ease;
+    opacity:.72;
+    position:relative;
+  }
+  .tab-btn .tab-num{
+    font-family:'JetBrains Mono',monospace;
+    font-weight:500;
+    font-size:11px;
+    opacity:.75;
+  }
+  .tab-btn .tab-label{
+    writing-mode: vertical-rl;
+    transform: rotate(180deg);
+    font-size:15px;
+    letter-spacing:.5px;
+  }
+  .tab-btn[data-tab="calendar"]{ background: linear-gradient(160deg, var(--brass), var(--brass-deep)); }
+  .tab-btn[data-tab="board"]{ background: linear-gradient(160deg, var(--moss), var(--moss-deep)); }
+  .tab-btn[data-tab="music"]{ background: linear-gradient(160deg, var(--plum), var(--plum-deep)); }
+
+  .tab-btn.active{
+    transform: translateX(14px) scale(1.04);
+    opacity:1;
+    box-shadow: -6px 6px 18px rgba(0,0,0,.4);
+    filter:saturate(1.1);
+  }
+  .tab-btn:hover{ opacity:1; }
+
+  .notebook{
+    flex:1;
+    background: var(--paper);
+    border-radius: 4px 16px 16px 16px;
+    box-shadow: 0 30px 60px rgba(0,0,0,.45), 0 2px 0 rgba(0,0,0,.05) inset;
+    min-height:640px;
+    padding: 30px 32px 34px;
+    position:relative;
+    overflow:hidden;
+  }
+  .notebook::before{
+    content:"";
+    position:absolute; inset:0;
+    background-image: repeating-linear-gradient(to bottom, transparent 0 43px, var(--paper-line) 43px 44px);
+    opacity:.5;
+    pointer-events:none;
+  }
+  .panel{ display:none; position:relative; z-index:2; }
+  .panel.active{ display:block; animation: fadeUp .35s ease; }
+  @keyframes fadeUp{ from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);} }
+
+  .panel-title{
+    font-family:'Fraunces',serif;
+    font-weight:800;
+    font-size:26px;
+    margin:0 0 4px;
+    display:flex;
+    align-items:center;
+    gap:10px;
+  }
+  .panel-sub{
+    margin:0 0 22px;
+    font-size:13.5px;
+    color:#5a5147;
+  }
+
+  .sticky-note{
+    background:#fff6c9;
+    border:1px solid rgba(0,0,0,.08);
+    box-shadow: 3px 4px 10px rgba(0,0,0,.12);
+    border-radius:2px;
+    padding:12px 14px;
+    font-size:12.5px;
+    line-height:1.5;
+    color:#463f22;
+    max-width:520px;
+    transform:rotate(-.6deg);
+    margin-bottom:22px;
+  }
+  .sticky-note b{ display:block; font-family:'Fraunces',serif; font-size:13px; margin-bottom:3px;}
+
+  /* ---- CALENDAR ---- */
+  .cal-layout{ display:grid; grid-template-columns: 1.15fr .95fr; gap:26px; align-items:start; }
+  @media (max-width:860px){ .cal-layout{ grid-template-columns:1fr; } }
+
+  .cal-card, .note-card{
+    background: rgba(255,255,255,.5);
+    border:1px solid var(--paper-line);
+    border-radius:12px;
+    padding:18px;
+  }
+  .cal-nav{ display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; }
+  .cal-nav h3{ margin:0; font-family:'Fraunces',serif; font-size:19px; text-transform:capitalize; }
+  .cal-nav button{
+    all:unset; cursor:pointer; width:30px; height:30px; border-radius:50%;
+    display:flex; align-items:center; justify-content:center;
+    background:var(--brass); color:#fff; font-weight:700;
+  }
+  .cal-grid{ display:grid; grid-template-columns:repeat(7,1fr); gap:4px; }
+  .cal-dow{ text-align:center; font-size:11px; color:#8a7d68; font-weight:600; padding-bottom:6px; }
+  .cal-day{
+    aspect-ratio:1/.85;
+    border-radius:8px;
+    border:1px solid transparent;
+    background:transparent;
+    cursor:pointer;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    font-family:'JetBrains Mono',monospace; font-size:13px;
+    position:relative;
+    color:var(--ink-text);
+  }
+  .cal-day.pad{ visibility:hidden; }
+  .cal-day:hover{ background: rgba(184,134,59,.15); }
+  .cal-day.today{ border-color:var(--brass); font-weight:700; }
+  .cal-day.selected{ background:var(--brass); color:#fff; }
+  .cal-dot{ width:5px; height:5px; border-radius:50%; background:var(--brass-deep); margin-top:3px; }
+  .cal-day.selected .cal-dot{ background:#fff; }
+
+  .day-events{ margin-top:16px; }
+  .day-events h4{ margin:0 0 8px; font-size:12.5px; color:#6b5f4f; font-weight:600; letter-spacing:.3px; }
+  .event-item{
+    display:flex; gap:10px; align-items:flex-start;
+    background:#fff; border-radius:8px; padding:8px 10px; margin-bottom:6px;
+    border:1px solid var(--paper-line);
+  }
+  .event-time{ font-family:'JetBrains Mono',monospace; font-size:11.5px; color:var(--brass-deep); font-weight:700; white-space:nowrap; padding-top:1px;}
+  .event-text{ flex:1; font-size:13px; line-height:1.4; }
+  .event-del{ all:unset; cursor:pointer; color:#b0a690; font-size:15px; line-height:1; }
+  .event-del:hover{ color:var(--danger); }
+  .empty-hint{ font-size:12.5px; color:#9a8f7c; font-style:italic; }
+
+  .note-card label{ display:block; font-size:11.5px; font-weight:600; color:#6b5f4f; margin:12px 0 5px; letter-spacing:.3px; }
+  .note-card label:first-of-type{ margin-top:0; }
+  textarea#noteText{
+    width:100%; min-height:96px; resize:vertical;
+    border:1px solid var(--paper-line); border-radius:8px; padding:10px 12px;
+    font-family:'Inter',sans-serif; font-size:14px; background:#fff;
+  }
+  .mic-row{ display:flex; gap:8px; margin-top:8px; }
+  .mic-btn{
+    all:unset; cursor:pointer; width:38px; height:38px; border-radius:50%;
+    background:var(--brass); color:#fff; display:flex; align-items:center; justify-content:center;
+    font-size:16px; transition: background .2s, transform .15s;
+  }
+  .mic-btn.recording{ background:var(--danger); animation:pulse 1.1s infinite; }
+  @keyframes pulse{ 0%{box-shadow:0 0 0 0 rgba(163,67,47,.5);} 70%{box-shadow:0 0 0 9px rgba(163,67,47,0);} 100%{box-shadow:0 0 0 0 rgba(163,67,47,0);} }
+  .mic-hint{ font-size:11.5px; color:#9a8f7c; align-self:center; }
+  .dt-row{ display:flex; gap:10px; }
+  .dt-row > div{ flex:1; }
+  input[type=date], input[type=time]{
+    width:100%; border:1px solid var(--paper-line); border-radius:8px; padding:8px 10px;
+    font-family:'JetBrains Mono',monospace; font-size:13px; background:#fff;
+  }
+  .save-btn{
+    all:unset; cursor:pointer; margin-top:16px; width:100%; text-align:center;
+    background:var(--brass-deep); color:#fff; padding:11px; border-radius:8px;
+    font-weight:600; font-size:14px; letter-spacing:.2px;
+  }
+  .save-btn:hover{ filter:brightness(1.08); }
+
+  /* ---- BOARD ---- */
+  .board-controls{ display:flex; gap:10px; flex-wrap:wrap; margin-bottom:18px; }
+  .board-controls input[type=text]{
+    flex:1; min-width:220px; border:1px solid var(--paper-line); border-radius:8px;
+    padding:10px 12px; font-size:13.5px; background:#fff;
+  }
+  .btn-solid{
+    all:unset; cursor:pointer; padding:10px 16px; border-radius:8px;
+    background:var(--moss-deep); color:#fff; font-weight:600; font-size:13.5px; white-space:nowrap;
+  }
+  .btn-solid:hover{ filter:brightness(1.1); }
+  .drop-zone{
+    border:2px dashed var(--paper-line); border-radius:10px; padding:16px;
+    text-align:center; font-size:12.5px; color:#7a7160; margin-bottom:20px; cursor:pointer;
+    transition:background .2s, border-color .2s;
+  }
+  .drop-zone.drag{ background:rgba(92,110,80,.1); border-color:var(--moss); }
+  .board-grid{
+    columns: 4 200px; column-gap:12px;
+  }
+  @media(max-width:700px){ .board-grid{ columns:2 160px; } }
+  .board-item{
+    break-inside:avoid; margin-bottom:12px; position:relative;
+    border-radius:10px; overflow:hidden; box-shadow:0 4px 12px rgba(0,0,0,.15);
+  }
+  .board-item img{ width:100%; display:block; }
+  .board-del{
+    position:absolute; top:6px; right:6px; all:unset; cursor:pointer;
+    width:22px; height:22px; border-radius:50%; background:rgba(0,0,0,.55);
+    color:#fff; display:flex; align-items:center; justify-content:center; font-size:13px;
+  }
+  .board-empty{ color:#8a7d68; font-size:13px; font-style:italic; padding:30px 0; text-align:center; }
+
+  /* ---- MUSIC ---- */
+  .music-layout{ display:grid; grid-template-columns: 1fr 1fr; gap:26px; }
+  @media(max-width:860px){ .music-layout{ grid-template-columns:1fr; } }
+  .link-row{ display:flex; gap:8px; margin-bottom:16px; }
+  .link-row input{
+    flex:1; border:1px solid var(--paper-line); border-radius:8px; padding:10px 12px;
+    font-size:13.5px; background:#fff;
+  }
+  .player-frame{
+    border-radius:12px; overflow:hidden; min-height:152px;
+    background:rgba(0,0,0,.06); display:flex; align-items:center; justify-content:center;
+    color:#8a7d68; font-size:12.5px; font-style:italic;
+  }
+  .player-frame iframe{ border:0; width:100%; height:352px; display:block; }
+  .track-meta{ margin-top:10px; font-size:12.5px; color:#6b5f4f; }
+  .track-meta b{ color:var(--ink-text); }
+  .lyrics-card{ background:rgba(255,255,255,.5); border:1px solid var(--paper-line); border-radius:12px; padding:16px; }
+  .lyrics-card h4{ margin:0 0 8px; font-family:'Fraunces',serif; font-size:16px; }
+  textarea#lyricsText{
+    width:100%; min-height:220px; resize:vertical; border:1px solid var(--paper-line);
+    border-radius:8px; padding:10px 12px; font-size:13.5px; font-family:'Inter',sans-serif; background:#fff;
+  }
+  .vol-row{ display:flex; align-items:center; gap:10px; margin-top:14px; }
+  .vol-row input[type=range]{ flex:1; accent-color: var(--plum-deep); }
+  .vol-row span{ font-family:'JetBrains Mono',monospace; font-size:12px; width:34px; text-align:right; }
+</style>
+</head>
+<body>
+
+<div class="desk">
+  <div class="desk-header">
+    <div>
+      <h1>Günlük Defter</h1>
+      <p>takvim · görsel pano · müzik köşesi</p>
+    </div>
+  </div>
+
+  <div class="notebook-wrap">
+    <div class="tabs-rail">
+      <button class="tab-btn active" data-tab="calendar">
+        <span class="tab-num">01</span>
+        <span class="tab-label">Takvim</span>
+      </button>
+      <button class="tab-btn" data-tab="board">
+        <span class="tab-num">02</span>
+        <span class="tab-label">Pano</span>
+      </button>
+      <button class="tab-btn" data-tab="music">
+        <span class="tab-num">03</span>
+        <span class="tab-label">Müzik</span>
+      </button>
+    </div>
+
+    <div class="notebook">
+
+      <!-- PANEL 1: CALENDAR -->
+      <section class="panel active" id="panel-calendar">
+        <h2 class="panel-title">🗓️ Takvim</h2>
+        <p class="panel-sub">Bir gün seç, sağ tarafta konuşarak ya da yazarak not oluştur ve tarihini seçip ekle.</p>
+
+        <div class="cal-layout">
+          <div class="cal-card">
+            <div class="cal-nav">
+              <button id="prevMonth">‹</button>
+              <h3 id="monthLabel"></h3>
+              <button id="nextMonth">›</button>
+            </div>
+            <div class="cal-grid" id="calDow"></div>
+            <div class="cal-grid" id="calDays" style="margin-top:4px;"></div>
+
+            <div class="day-events">
+              <h4 id="dayEventsTitle">Seçili günün notları</h4>
+              <div id="dayEventsList"></div>
+            </div>
+          </div>
+
+          <div class="note-card">
+            <label>Not metni</label>
+            <textarea id="noteText" placeholder="Buraya yaz ya da mikrofona konuş…"></textarea>
+            <div class="mic-row">
+              <button class="mic-btn" id="micBtn" title="Sesle yaz">🎤</button>
+              <span class="mic-hint" id="micHint">Mikrofona basıp Türkçe konuş, metin otomatik yazılsın</span>
+            </div>
+
+            <div class="dt-row">
+              <div>
+                <label>Gün / Ay / Yıl</label>
+                <input type="date" id="noteDate">
+              </div>
+              <div>
+                <label>Saat</label>
+                <input type="time" id="noteTime">
+              </div>
+            </div>
+
+            <button class="save-btn" id="saveNote">Takvime ekle</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- PANEL 2: BOARD -->
+      <section class="panel" id="panel-board">
+        <h2 class="panel-title">🖼️ Görsel Pano</h2>
+        <p class="panel-sub">Beğendiğin görselleri buraya ekle.</p>
+
+        <div class="sticky-note">
+          <b>Pinterest hakkında dürüst not</b>
+          Pinterest'in resmi hesabına gerçek zamanlı otomatik bağlanmak, Pinterest'in kendi geliştirici onayı ve
+          sunucu taraflı bir yetkilendirme (OAuth) gerektiriyor — bu, tek bir web sayfası içinden yapılamıyor.
+          Bunun yerine: Pinterest'te bir pine sağ tıklayıp <i>"Görsel adresini kopyala"</i> ile linkini buraya
+          yapıştırabilir, ya da PNG/JPG dosyalarını bilgisayarından yükleyebilirsin. İkisi de anında panoya eklenir.
+        </div>
+
+        <div class="board-controls">
+          <input type="text" id="imgUrlInput" placeholder="Pinterest görsel linki (https://i.pinimg.com/... )">
+          <button class="btn-solid" id="addUrlBtn">Linkten ekle</button>
+          <button class="btn-solid" id="pickFileBtn" style="background:var(--moss);">Bilgisayardan yükle</button>
+          <input type="file" id="fileInput" accept="image/png,image/jpeg" multiple hidden>
+        </div>
+
+        <div class="drop-zone" id="dropZone">Görselleri buraya sürükle bırak (PNG / JPG)</div>
+
+        <div class="board-grid" id="boardGrid"></div>
+      </section>
+
+      <!-- PANEL 3: MUSIC -->
+      <section class="panel" id="panel-music">
+        <h2 class="panel-title">🎧 Müzik Köşesi</h2>
+        <p class="panel-sub">Bir Spotify şarkı linki yapıştır, resmi mini oynatıcı burada açılsın.</p>
+
+        <div class="sticky-note">
+          <b>Spotify hakkında dürüst not</b>
+          Şarkıyı gerçekten çalan, resmi Spotify mini oynatıcısını (embed) gömüyorum — bu gerçek ve çalışıyor.
+          Ama tam hesap bağlantısı (kendi çalma listelerin, Premium üzerinden tam kontrol) ve senkronize şarkı
+          sözü servisleri lisanslı bir API anahtarı ve sunucu gerektiriyor, bu ortamda mevcut değil. Bu yüzden
+          ses seviyesini Spotify oynatıcısının kendi arayüzünden ya da cihazının ses tuşlarından ayarlıyorsun;
+          sözleri de sen ekleyip kaydediyorsun — bir daha aynı şarkıyı açtığında otomatik geri gelir.
+        </div>
+
+        <div class="link-row">
+          <input type="text" id="spotifyLink" placeholder="https://open.spotify.com/track/...">
+          <button class="btn-solid" id="loadTrackBtn" style="background:var(--plum-deep);">Yükle</button>
+        </div>
+
+        <div class="music-layout">
+          <div>
+            <div class="player-frame" id="playerFrame">Henüz şarkı yüklenmedi</div>
+            <div class="track-meta" id="trackMeta"></div>
+            <div class="vol-row">
+              <span>🔈</span>
+              <input type="range" id="volSlider" min="0" max="100" value="70">
+              <span id="volLabel">70%</span>
+            </div>
+          </div>
+          <div class="lyrics-card">
+            <h4>Şarkı sözleri</h4>
+            <textarea id="lyricsText" placeholder="Sözleri buraya yapıştır ya da yaz…"></textarea>
+            <button class="save-btn" id="saveLyricsBtn" style="background:var(--plum-deep); margin-top:10px;">Sözleri kaydet</button>
+          </div>
+        </div>
+      </section>
+
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  /* ---------- storage wrapper (falls back to memory if window.storage is unavailable) ---------- */
+  const memStore = new Map();
+  const storage = {
+    async get(key){
+      try{
+        if(window.storage) return await window.storage.get(key);
+        return memStore.has(key) ? {key, value:memStore.get(key)} : null;
+      }catch(e){ return memStore.has(key) ? {key, value:memStore.get(key)} : null; }
+    },
+    async set(key, value){
+      try{
+        if(window.storage) return await window.storage.set(key, value);
+        memStore.set(key, value); return {key, value};
+      }catch(e){ memStore.set(key, value); return {key, value}; }
+    },
+    async delete(key){
+      try{
+        if(window.storage) return await window.storage.delete(key);
+        memStore.delete(key); return {key, deleted:true};
+      }catch(e){ memStore.delete(key); return {key, deleted:true}; }
+    },
+    async list(prefix){
+      try{
+        if(window.storage) return await window.storage.list(prefix);
+        const keys = Array.from(memStore.keys()).filter(k=>!prefix || k.startsWith(prefix));
+        return {keys};
+      }catch(e){
+        const keys = Array.from(memStore.keys()).filter(k=>!prefix || k.startsWith(prefix));
+        return {keys};
+      }
+    }
+  };
+
+  /* ---------- TAB SWITCHING ---------- */
+  const tabs = document.querySelectorAll('.tab-btn');
+  const panels = document.querySelectorAll('.panel');
+  tabs.forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      tabs.forEach(b=>b.classList.remove('active'));
+      panels.forEach(p=>p.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById('panel-'+btn.dataset.tab).classList.add('active');
+    });
+  });
+
+  /* ===================== PANEL 1: CALENDAR ===================== */
+  const monthNamesTR = ['Ocak','Şubat','Mart','Nisan','Mayıs','Haziran','Temmuz','Ağustos','Eylül','Ekim','Kasım','Aralık'];
+  const dowTR = ['Pzt','Sal','Çar','Per','Cum','Cmt','Paz'];
+  let viewDate = new Date();
+  let selectedDateStr = fmtDate(new Date());
+  let events = {}; // { 'YYYY-MM-DD': [{id, time, text}] }
+
+  function fmtDate(d){
+    return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+  }
+
+  async function loadEvents(){
+    const list = await storage.list('event:');
+    events = {};
+    for(const key of (list?.keys||[])){
+      const res = await storage.get(key);
+      if(!res) continue;
+      let ev;
+      try{ ev = typeof res.value==='string' ? JSON.parse(res.value) : res.value; }catch(e){ continue; }
+      if(!events[ev.date]) events[ev.date]=[];
+      events[ev.date].push(ev);
+    }
+    Object.values(events).forEach(arr=>arr.sort((a,b)=> (a.time||'').localeCompare(b.time||'')));
+  }
+
+  function renderCalDow(){
+    const el = document.getElementById('calDow');
+    el.innerHTML = dowTR.map(d=>`<div class="cal-dow">${d}</div>`).join('');
+  }
+
+  function renderCalendar(){
+    document.getElementById('monthLabel').textContent = monthNamesTR[viewDate.getMonth()]+' '+viewDate.getFullYear();
+    const year = viewDate.getFullYear(), month = viewDate.getMonth();
+    const firstDay = new Date(year, month, 1);
+    const startOffset = (firstDay.getDay()+6)%7; // Monday=0
+    const daysInMonth = new Date(year, month+1, 0).getDate();
+    const todayStr = fmtDate(new Date());
+
+    let html='';
+    for(let i=0;i<startOffset;i++) html += `<div class="cal-day pad"></div>`;
+    for(let d=1; d<=daysInMonth; d++){
+      const dateStr = year+'-'+String(month+1).padStart(2,'0')+'-'+String(d).padStart(2,'0');
+      const hasEvents = events[dateStr] && events[dateStr].length;
+      const cls = ['cal-day'];
+      if(dateStr===todayStr) cls.push('today');
+      if(dateStr===selectedDateStr) cls.push('selected');
+      html += `<button class="${cls.join(' ')}" data-date="${dateStr}">${d}${hasEvents?'<span class=\"cal-dot\"></span>':''}</button>`;
+    }
+    document.getElementById('calDays').innerHTML = html;
+
+    document.querySelectorAll('.cal-day[data-date]').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        selectedDateStr = btn.dataset.date;
+        document.getElementById('noteDate').value = selectedDateStr;
+        renderCalendar();
+        renderDayEvents();
+      });
+    });
+  }
+
+  function renderDayEvents(){
+    const title = document.getElementById('dayEventsTitle');
+    const list = document.getElementById('dayEventsList');
+    const [y,m,d] = selectedDateStr.split('-');
+    title.textContent = `${d}.${m}.${y} tarihli notlar`;
+    const arr = events[selectedDateStr]||[];
+    if(!arr.length){
+      list.innerHTML = `<div class="empty-hint">Bu gün için henüz not yok.</div>`;
+      return;
+    }
+    list.innerHTML = arr.map(ev=>`
+      <div class="event-item">
+        <div class="event-time">${ev.time||''}</div>
+        <div class="event-text">${escapeHtml(ev.text)}</div>
+        <button class="event-del" data-id="${ev.id}">×</button>
+      </div>
+    `).join('');
+    list.querySelectorAll('.event-del').forEach(btn=>{
+      btn.addEventListener('click', async ()=>{
+        await storage.delete('event:'+btn.dataset.id);
+        await loadEvents();
+        renderCalendar();
+        renderDayEvents();
+      });
+    });
+  }
+
+  function escapeHtml(s){
+    const div = document.createElement('div'); div.textContent = s; return div.innerHTML;
+  }
+
+  document.getElementById('prevMonth').addEventListener('click', ()=>{
+    viewDate.setMonth(viewDate.getMonth()-1); renderCalendar();
+  });
+  document.getElementById('nextMonth').addEventListener('click', ()=>{
+    viewDate.setMonth(viewDate.getMonth()+1); renderCalendar();
+  });
+
+  /* --- mic / speech-to-text --- */
+  let recognition = null, recognizing = false;
+  const micBtn = document.getElementById('micBtn');
+  const micHint = document.getElementById('micHint');
+  const noteText = document.getElementById('noteText');
+
+  function buildRecognition(){
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if(!SR) return null;
+    const r = new SR();
+    r.lang = 'tr-TR';
+    r.continuous = true;
+    r.interimResults = true;
+    r.onresult = (e)=>{
+      let finalChunk = '';
+      for(let i=e.resultIndex; i<e.results.length; i++){
+        if(e.results[i].isFinal) finalChunk += e.results[i][0].transcript;
+      }
+      if(finalChunk.trim()){
+        noteText.value = (noteText.value ? noteText.value+' ' : '') + finalChunk.trim();
+      }
+    };
+    r.onerror = ()=>{ stopRecording(); micHint.textContent='Bir sorun oldu, tekrar dene.'; };
+    r.onend = ()=>{ if(recognizing) stopRecording(); };
+    return r;
+  }
+  function stopRecording(){
+    recognizing=false;
+    micBtn.classList.remove('recording');
+    micBtn.textContent='🎤';
+    micHint.textContent='Mikrofona basıp Türkçe konuş, metin otomatik yazılsın';
+  }
+  micBtn.addEventListener('click', async ()=>{
+    if(!recognition){
+      recognition = buildRecognition();
+      if(!recognition){
+        micHint.textContent = 'Bu tarayıcı sesle yazmayı desteklemiyor (Chrome/Edge dene).';
+        return;
+      }
+    }
+    if(recognizing){
+      recognition.stop();
+      stopRecording();
+      return;
+    }
+    try{
+      const stream = await navigator.mediaDevices.getUserMedia({audio:true});
+      stream.getTracks().forEach(t=>t.stop()); // sadece izin almak için açtık
+    }catch(e){
+      micHint.textContent = 'Mikrofon izni verilmedi.';
+      return;
+    }
+    recognition.start();
+    recognizing = true;
+    micBtn.classList.add('recording');
+    micBtn.textContent = '⏺';
+    micHint.textContent = 'Dinliyorum… bitince tekrar bas';
+  });
+
+  document.getElementById('saveNote').addEventListener('click', async ()=>{
+    const text = noteText.value.trim();
+    const date = document.getElementById('noteDate').value;
+    const time = document.getElementById('noteTime').value;
+    if(!text){ alert('Önce bir not yaz ya da sesle söyle.'); return; }
+    if(!date){ alert('Lütfen bir tarih seç.'); return; }
+    const id = Date.now()+'-'+Math.random().toString(36).slice(2,7);
+    const ev = {id, date, time, text};
+    await storage.set('event:'+id, JSON.stringify(ev));
+    noteText.value='';
+    selectedDateStr = date;
+    viewDate = new Date(date+'T00:00:00');
+    await loadEvents();
+    renderCalendar();
+    renderDayEvents();
+  });
+
+  async function initCalendar(){
+    renderCalDow();
+    document.getElementById('noteDate').value = selectedDateStr;
+    const now = new Date();
+    document.getElementById('noteTime').value = String(now.getHours()).padStart(2,'0')+':'+String(now.getMinutes()).padStart(2,'0');
+    await loadEvents();
+    renderCalendar();
+    renderDayEvents();
+  }
+
+  /* ===================== PANEL 2: IMAGE BOARD ===================== */
+  const boardGrid = document.getElementById('boardGrid');
+
+  async function loadBoard(){
+    const list = await storage.list('img:');
+    const items = [];
+    for(const key of (list?.keys||[])){
+      const res = await storage.get(key);
+      if(!res) continue;
+      try{
+        const v = typeof res.value==='string' ? JSON.parse(res.value) : res.value;
+        items.push(v);
+      }catch(e){}
+    }
+    items.sort((a,b)=>b.addedAt-a.addedAt);
+    if(!items.length){
+      boardGrid.innerHTML = `<div class="board-empty">Pano boş — bir link yapıştır ya da görsel yükle.</div>`;
+      return;
+    }
+    boardGrid.innerHTML = items.map(it=>`
+      <div class="board-item">
+        <img src="${it.src}" loading="lazy" referrerpolicy="no-referrer">
+        <button class="board-del" data-id="${it.id}">×</button>
+      </div>
+    `).join('');
+    boardGrid.querySelectorAll('.board-del').forEach(btn=>{
+      btn.addEventListener('click', async ()=>{
+        await storage.delete('img:'+btn.dataset.id);
+        loadBoard();
+      });
+    });
+  }
+
+  async function addImage(obj){
+    const id = Date.now()+'-'+Math.random().toString(36).slice(2,7);
+    obj.id = id;
+    obj.addedAt = Date.now();
+    await storage.set('img:'+id, JSON.stringify(obj));
+    loadBoard();
+  }
+
+  document.getElementById('addUrlBtn').addEventListener('click', ()=>{
+    const input = document.getElementById('imgUrlInput');
+    const url = input.value.trim();
+    if(!url){ return; }
+    addImage({type:'url', src:url});
+    input.value='';
+  });
+
+  const fileInput = document.getElementById('fileInput');
+  document.getElementById('pickFileBtn').addEventListener('click', ()=> fileInput.click());
+  fileInput.addEventListener('change', (e)=> handleFiles(e.target.files));
+
+  const dropZone = document.getElementById('dropZone');
+  dropZone.addEventListener('click', ()=> fileInput.click());
+  ['dragenter','dragover'].forEach(evt=>{
+    dropZone.addEventListener(evt, (e)=>{ e.preventDefault(); dropZone.classList.add('drag'); });
+  });
+  ['dragleave','drop'].forEach(evt=>{
+    dropZone.addEventListener(evt, (e)=>{ e.preventDefault(); dropZone.classList.remove('drag'); });
+  });
+  dropZone.addEventListener('drop', (e)=>{
+    if(e.dataTransfer.files.length) handleFiles(e.dataTransfer.files);
+  });
+
+  function handleFiles(files){
+    Array.from(files).forEach(file=>{
+      if(!/image\/(png|jpe?g)/.test(file.type)){
+        alert(file.name+': sadece PNG veya JPG desteklenir.'); return;
+      }
+      if(file.size > 3.5*1024*1024){
+        alert(file.name+': dosya çok büyük (3.5MB üstü), lütfen daha küçük bir görsel kullan.'); return;
+      }
+      const reader = new FileReader();
+      reader.onload = ()=> addImage({type:'upload', src:reader.result});
+      reader.readAsDataURL(file);
+    });
+    fileInput.value='';
+  }
+
+  /* ===================== PANEL 3: MUSIC ===================== */
+  const playerFrame = document.getElementById('playerFrame');
+  const trackMeta = document.getElementById('trackMeta');
+  const lyricsText = document.getElementById('lyricsText');
+  const saveLyricsBtn = document.getElementById('saveLyricsBtn');
+  let currentTrackId = null;
+
+  function extractTrackId(url){
+    const m = url.match(/track\/([a-zA-Z0-9]+)/);
+    return m ? m[1] : null;
+  }
+
+  async function loadTrack(url){
+    const id = extractTrackId(url);
+    if(!id){
+      alert('Geçerli bir Spotify şarkı linki yapıştır (örn: https://open.spotify.com/track/xxxxx).');
+      return;
+    }
+    currentTrackId = id;
+    playerFrame.innerHTML = `<iframe src="https://open.spotify.com/embed/track/${id}?utm_source=generator" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy"></iframe>`;
+    trackMeta.textContent = 'Yükleniyor…';
+
+    try{
+      const res = await fetch('https://open.spotify.com/oembed?url='+encodeURIComponent('https://open.spotify.com/track/'+id));
+      if(res.ok){
+        const data = await res.json();
+        trackMeta.innerHTML = `<b>${escapeHtml(data.title||'')}</b>`;
+      } else {
+        trackMeta.textContent = '';
+      }
+    }catch(e){ trackMeta.textContent = ''; }
+
+    await storage.set('last-track', url);
+    const saved = await storage.get('lyrics:'+id);
+    lyricsText.value = saved ? (typeof saved.value==='string'? saved.value : '') : '';
+  }
+
+  document.getElementById('loadTrackBtn').addEventListener('click', ()=>{
+    loadTrack(document.getElementById('spotifyLink').value.trim());
+  });
+
+  saveLyricsBtn.addEventListener('click', async ()=>{
+    if(!currentTrackId){ alert('Önce bir şarkı yükle.'); return; }
+    await storage.set('lyrics:'+currentTrackId, lyricsText.value);
+    saveLyricsBtn.textContent = 'Kaydedildi ✓';
+    setTimeout(()=> saveLyricsBtn.textContent='Sözleri kaydet', 1400);
+  });
+
+  const volSlider = document.getElementById('volSlider');
+  const volLabel = document.getElementById('volLabel');
+  volSlider.addEventListener('input', ()=>{
+    volLabel.textContent = volSlider.value+'%';
+    // Not: gömülü Spotify oynatıcısı ayrı bir kaynaktan (iframe) geldiği için
+    // tarayıcı güvenliği gereği buradan doğrudan sesini kontrol edemiyoruz.
+    // Gerçek ses seviyesini oynatıcının kendi arayüzünden ayarlayabilirsin.
+  });
+
+  async function initMusic(){
+    const last = await storage.get('last-track');
+    if(last && last.value){
+      document.getElementById('spotifyLink').value = last.value;
+      loadTrack(last.value);
+    }
+  }
+
+  /* ===================== INIT ===================== */
+  initCalendar();
+  loadBoard();
+  initMusic();
+})();
+</script>
+</body>
+</html>
